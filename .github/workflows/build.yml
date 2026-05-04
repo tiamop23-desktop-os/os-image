@@ -1,0 +1,41 @@
+name: Build Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build.yml"
+      - "bluebuild/**"
+      - "justfile"
+      - "manifests/**"
+      - "patches/**"
+      - "scripts/**"
+      - "vendor/**"
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare generated tree
+        run: bash ./scripts/prepare-components.sh
+
+      - name: Build and publish image
+        uses: blue-build/github-action@v1
+        with:
+          working_directory: ./bluebuild
+          skip_checkout: true
+          recipe: main.yml
+          cosign_private_key: ${{ secrets.SIGNING_SECRET }}
+          registry_token: ${{ github.token }}
+          pr_event_number: ${{ github.event.number }}

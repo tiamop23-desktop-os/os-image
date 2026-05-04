@@ -1,0 +1,4 @@
+# components:
+#   - id: dash-to-panel
+#     type: gnome-extension
+#     install_dir: usr/share/gnome-shell/extensions/dash-to-panel@jderose9.github.com

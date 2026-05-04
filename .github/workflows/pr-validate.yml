@@ -1,0 +1,39 @@
+name: PR Validate
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - "bluebuild/**"
+      - "justfile"
+      - "manifests/**"
+      - "patches/**"
+      - "renovate.json"
+      - "scripts/**"
+      - "vendor/**"
+  merge_group:
+
+concurrency:
+  group: pr-validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-scaffold:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare generated tree
+        run: bash ./scripts/prepare-components.sh
+
+      - name: Check scaffold invariants
+        run: |
+          test -d bluebuild/files/generated
+          test -f bluebuild/files/generated/.gitignore
+          test -f bluebuild/recipes/main.yml
+          test -f manifests/components.yml
+          test -f scripts/component-edit.sh
+          test -f scripts/prepare-components.sh

@@ -1,0 +1,7 @@
+.work/
+bluebuild/files/generated/*
+!bluebuild/files/generated/.gitignore
+
+# Common editor and OS noise
+.DS_Store
+Thumbs.db
