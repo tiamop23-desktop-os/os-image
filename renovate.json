@@ -5,6 +5,13 @@
   "vulnerabilityAlerts": {
     "enabled": true
   },
+  "packageRules": [
+    {
+      "matchManagers": ["custom.regex"],
+      "matchDatasources": ["docker"],
+      "pinDigests": false
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",
