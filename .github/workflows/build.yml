@@ -21,6 +21,7 @@ env:
   IMAGE_VERSION: "44"
   IMAGE_VARIANT: desktop-os
   IMAGE_ARCH: x86_64
+  IMAGE_ARCHIVE: .tmp/desktop-os-latest.tar
 
 concurrency:
   group: build-${{ github.ref }}
@@ -52,14 +53,18 @@ jobs:
           registry_token: ${{ github.token }}
           pr_event_number: ${{ github.event.number }}
 
-  build-installer-iso:
-    needs: publish
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-    steps:
+      - name: Log in to GHCR for ISO source export
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+
+      - name: Export published image for installer build
+        run: |
+          mkdir -p "$(dirname "${GITHUB_WORKSPACE}/${IMAGE_ARCHIVE}")"
+          docker pull "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG}"
+          docker save "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG}" -o "${GITHUB_WORKSPACE}/${IMAGE_ARCHIVE}"
+
       - name: Build installer ISO
         id: build
         uses: JasonN3/build-container-installer@c9ef3de33236e66781ec37bd0485e8009eaefe24 # v1.4.0
@@ -67,6 +72,7 @@ jobs:
           arch: ${{ env.IMAGE_ARCH }}
           image_name: ${{ env.IMAGE_NAME }}
           image_repo: ${{ env.IMAGE_REPO }}
+          image_src: docker-archive:/github/workspace/${{ env.IMAGE_ARCHIVE }}
           image_tag: ${{ env.IMAGE_TAG }}
           version: ${{ env.IMAGE_VERSION }}
           variant: ${{ env.IMAGE_VARIANT }}
