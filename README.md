@@ -104,7 +104,7 @@ just component-abort dash-to-panel
 
 - Pull request and nightly validation workflows check out submodules recursively and run `scripts/prepare-components.sh` before asserting scaffold invariants.
 - The image build workflow in `.github/workflows/build.yml` prepares the generated tree, publishes `ghcr.io/<owner>/desktop-os:latest`, then builds an installer ISO artifact from that published image.
-- The build workflow also supports manual runs through GitHub Actions `workflow_dispatch`, which is the easiest way to trigger an ISO build on demand.
+- The build workflow also supports manual runs through GitHub Actions `workflow_dispatch` on `main`, which is the easiest way to trigger an ISO build on demand without publishing over a feature branch ref.
 - Successful ISO runs upload the installer ISO and checksum as GitHub Actions artifacts for the workflow run.
 - There is no separate top-level test suite documented today, so the narrowest relevant validation step is usually `just prepare [component]`.
 

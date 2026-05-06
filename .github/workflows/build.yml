@@ -28,6 +28,7 @@ concurrency:
 
 jobs:
   publish:
+    if: github.ref == 'refs/heads/main'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
@@ -53,6 +54,7 @@ jobs:
 
   build-installer-iso:
     needs: publish
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -60,7 +62,7 @@ jobs:
     steps:
       - name: Build installer ISO
         id: build
-        uses: JasonN3/build-container-installer@v1.4.0
+        uses: JasonN3/build-container-installer@c9ef3de33236e66781ec37bd0485e8009eaefe24 # v1.4.0
         with:
           arch: ${{ env.IMAGE_ARCH }}
           image_name: ${{ env.IMAGE_NAME }}
@@ -71,7 +73,7 @@ jobs:
           iso_name: ${{ env.IMAGE_NAME }}-${{ env.IMAGE_VERSION }}-${{ github.run_number }}.iso
 
       - name: Upload installer ISO artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ steps.build.outputs.iso_name }}
           path: |
