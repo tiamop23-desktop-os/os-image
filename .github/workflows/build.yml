@@ -18,10 +18,6 @@ env:
   IMAGE_NAME: desktop-os
   IMAGE_REPO: ghcr.io/${{ github.repository_owner }}
   IMAGE_TAG: latest
-  IMAGE_VERSION: "44"
-  IMAGE_VARIANT: desktop-os
-  IMAGE_ARCH: x86_64
-  IMAGE_ARCHIVE: .tmp/desktop-os-latest.tar
 
 concurrency:
   group: build-${{ github.ref }}
@@ -52,39 +48,3 @@ jobs:
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
           registry_token: ${{ github.token }}
           pr_event_number: ${{ github.event.number }}
-
-      - name: Log in to GHCR for ISO source export
-        env:
-          GHCR_TOKEN: ${{ github.token }}
-        run: |
-          echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
-
-      - name: Export published image for installer build
-        run: |
-          mkdir -p "$(dirname "${GITHUB_WORKSPACE}/${IMAGE_ARCHIVE}")"
-          docker pull "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG}"
-          docker save "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG}" -o "${GITHUB_WORKSPACE}/${IMAGE_ARCHIVE}"
-
-      - name: Build installer ISO
-        id: build
-        uses: JasonN3/build-container-installer@c9ef3de33236e66781ec37bd0485e8009eaefe24 # v1.4.0
-        with:
-          arch: ${{ env.IMAGE_ARCH }}
-          image_name: ${{ env.IMAGE_NAME }}
-          image_repo: ${{ env.IMAGE_REPO }}
-          image_src: docker-archive:/github/workspace/${{ env.IMAGE_ARCHIVE }}
-          image_tag: ${{ env.IMAGE_TAG }}
-          version: ${{ env.IMAGE_VERSION }}
-          variant: ${{ env.IMAGE_VARIANT }}
-          iso_name: ${{ env.IMAGE_NAME }}-${{ env.IMAGE_VERSION }}-${{ github.run_number }}.iso
-
-      - name: Upload installer ISO artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ${{ steps.build.outputs.iso_name }}
-          path: |
-            ${{ steps.build.outputs.iso_path }}/${{ steps.build.outputs.iso_name }}
-            ${{ steps.build.outputs.iso_path }}/${{ steps.build.outputs.iso_name }}-CHECKSUM
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
