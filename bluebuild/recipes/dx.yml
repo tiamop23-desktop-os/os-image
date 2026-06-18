@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+modules:
+  - type: default-flatpaks
+    configurations:
+      - scope: system
+        notify: false
+        install:
+          - io.podman_desktop.PodmanDesktop
+  - type: dnf
+    repos:
+      files:
+        - https://packages.microsoft.com/yumrepos/vscode/config.repo
+    install:
+      packages:
+        - podman-compose
+        - code
+  - type: files
+    files:
+      - source: static/system/etc/skel
+        destination: /etc/skel
+      - source: static/scripts/install-devcontainers-extension.sh
+        destination: /usr/local/bin/install-devcontainers-extension.sh
+  - type: containerfile
+    snippets:
+      - RUN chmod +x /usr/local/bin/install-devcontainers-extension.sh && /usr/local/bin/install-devcontainers-extension.sh && rm -f /usr/local/bin/install-devcontainers-extension.sh

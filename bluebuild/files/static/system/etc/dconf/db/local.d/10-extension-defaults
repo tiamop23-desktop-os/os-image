@@ -1,0 +1,18 @@
+[org/gnome/shell/extensions/clipboard-indicator]
+toggle-menu=['<Super>v']
+
+[org/gnome/shell/extensions/dash-to-panel]
+appicon-margin=6
+appicon-padding=6
+context-menu-entries='[{"title":"Terminal","cmd":"TERMINALSETTINGS"},{"title":"Files","cmd":"nautilus"},{"title":"Mission Center","cmd":"flatpak run io.missioncenter.MissionCenter"},{"title":"Bazaar","cmd":"flatpak run io.github.kolunmi.Bazaar"},{"title":"Extensions","cmd":"flatpak run com.mattjakeman.ExtensionManager"}]'
+hide-overview-on-startup=true
+hotkeys-overlay-combo='TEMPORARILY'
+isolate-workspaces=true
+multi-monitors=true
+overview-click-to-exit=true
+panel-element-positions-monitors-sync=true
+trans-dynamic-anim-target=0.7
+trans-dynamic-anim-time=300
+trans-panel-opacity=0.2
+trans-use-custom-opacity=true
+trans-use-dynamic-opacity=true

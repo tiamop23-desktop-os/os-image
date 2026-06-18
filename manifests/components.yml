@@ -1,4 +1,17 @@
-# components:
-#   - id: dash-to-panel
-#     type: gnome-extension
-#     install_dir: usr/share/gnome-shell/extensions/dash-to-panel@jderose9.github.com
+- id: dash-to-panel
+  type: gnome-extension
+  install_dir: usr/share/gnome-shell/extensions/dash-to-panel@jderose9.github.com
+  build_command: make _build
+  build_output: _build
+- id: blur-my-shell
+  type: gnome-extension
+  install_dir: usr/share/gnome-shell/extensions/blur-my-shell@aunetx
+  build_command: make build
+  build_output: build/blur-my-shell@aunetx.shell-extension.zip
+  post_install_command: glib-compile-schemas "$COMPONENT_DEST/schemas"
+- id: clipboard-indicator
+  type: gnome-extension
+  install_dir: usr/share/gnome-shell/extensions/clipboard-indicator@tudmotu.com
+  build_command: make bundle
+  build_output: bundle.zip
+  post_install_command: glib-compile-schemas "$COMPONENT_DEST/schemas"

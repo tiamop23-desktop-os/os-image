@@ -1,0 +1,12 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+modules:
+  - type: files
+    files:
+      - source: static/system/etc/dconf
+        destination: /etc/dconf
+      - source: generated/usr/share/gnome-shell/extensions
+        destination: /usr/share/gnome-shell/extensions
+  - type: containerfile
+    snippets:
+      - RUN dconf update

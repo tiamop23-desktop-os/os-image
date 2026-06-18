@@ -1,0 +1,30 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+modules:
+  - type: default-flatpaks
+    configurations:
+      - scope: system
+        notify: false
+        install:
+          - app.zen_browser.zen
+          - io.missioncenter.MissionCenter
+          - io.github.kolunmi.Bazaar
+          - com.mattjakeman.ExtensionManager
+  - type: dnf
+    repos:
+      cleanup: true
+      copr:
+        - scottames/ghostty
+    install:
+      packages:
+        - ghostty
+    remove:
+      packages:
+        - firefox
+        - firefox-langpacks
+        - gnome-software
+        - ptyxis
+  - type: files
+    files:
+      - source: static/system/etc/xdg
+        destination: /etc/xdg

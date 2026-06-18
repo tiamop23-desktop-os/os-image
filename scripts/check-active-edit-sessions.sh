@@ -5,28 +5,41 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./component-common.sh
 source "$script_dir/component-common.sh"
 
+run_git_in_repo() {
+  local repo_path="$1"
+  shift
+
+  # Pre-commit hooks export repo-local Git env vars (for example GIT_DIR) that
+  # break commands executed against nested repositories (submodules). Run each
+  # nested-repo command in a clean Git env.
+  (
+    unset $(git rev-parse --local-env-vars)
+    git -C "$repo_path" "$@"
+  )
+}
+
 is_commit_on_remote() {
   local repo_path="$1"
   local commit_oid="$2"
   local remote_name=""
   local ref_name=""
 
-  remote_name="$(git -C "$repo_path" remote | head -n 1)"
+  remote_name="$(run_git_in_repo "$repo_path" remote | head -n 1)"
   if [[ -z "$remote_name" ]]; then
     echo "No remote configured for submodule repository: $repo_path" >&2
     return 1
   fi
 
-  if ! git -C "$repo_path" fetch --quiet --tags "$remote_name"; then
+  if ! run_git_in_repo "$repo_path" fetch --quiet --tags "$remote_name"; then
     echo "Unable to fetch remote refs for submodule repository: $repo_path" >&2
     return 1
   fi
 
   while IFS= read -r ref_name; do
-    if git -C "$repo_path" merge-base --is-ancestor "$commit_oid" "$ref_name"; then
+    if run_git_in_repo "$repo_path" merge-base --is-ancestor "$commit_oid" "$ref_name"; then
       return 0
     fi
-  done < <(git -C "$repo_path" for-each-ref --format='%(refname)' "refs/remotes/$remote_name" refs/tags)
+  done < <(run_git_in_repo "$repo_path" for-each-ref --format='%(refname)' "refs/remotes/$remote_name" refs/tags)
 
   return 1
 }

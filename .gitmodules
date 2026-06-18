@@ -1,0 +1,12 @@
+[submodule "vendor/extensions/dash-to-panel"]
+	path = vendor/extensions/dash-to-panel
+	url = https://github.com/home-sweet-gnome/dash-to-panel.git
+	branch = v73
+[submodule "vendor/extensions/blur-my-shell"]
+	path = vendor/extensions/blur-my-shell
+	url = https://github.com/aunetx/blur-my-shell.git
+	branch = v72
+[submodule "vendor/extensions/clipboard-indicator"]
+	path = vendor/extensions/clipboard-indicator
+	url = https://github.com/Tudmotu/gnome-shell-extension-clipboard-indicator.git
+	branch = v70

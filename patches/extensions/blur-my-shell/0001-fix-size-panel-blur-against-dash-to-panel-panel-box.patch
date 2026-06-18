@@ -1,0 +1,69 @@
+From c43361cfce27a7b80a2ca210aae188e8fe2e76f6 Mon Sep 17 00:00:00 2001
+From: TiamoP23 <43099774+TiamoP23@users.noreply.github.com>
+Date: Thu, 7 May 2026 15:28:52 +0200
+Subject: [PATCH 1/2] fix: size panel blur against dash-to-panel panel box
+
+---
+ src/components/panel.js | 34 +++++++++++++++++++++++-----------
+ 1 file changed, 23 insertions(+), 11 deletions(-)
+
+diff --git a/src/components/panel.js b/src/components/panel.js
+index bd39166..ccf15e0 100644
+--- a/src/components/panel.js
++++ b/src/components/panel.js
+@@ -245,11 +245,19 @@ export const PanelBlur = class PanelBlur {
+         // update the size of the actor
+         this.update_size(actors);
+ 
++        // schedule a deferred size update to handle cases where the panel_box
++        // dimensions are not yet final (e.g. Dash to Panel initialization)
++        GLib.idle_add(GLib.PRIORITY_LOW, () => {
++            if (this.actors_list.includes(actors))
++                this.update_size(actors);
++            return GLib.SOURCE_REMOVE;
++        });
++
+         // connect to panel, panel_box and its parent position or size change
+         // this should fire update_size every time one of its params change
+         this.connections.connect(
+             panel,
+-            'notify::position',
++            ['notify::size', 'notify::position'],
+             _ => this.update_size(actors)
+         );
+         this.connections.connect(
+@@ -288,17 +296,21 @@ export const PanelBlur = class PanelBlur {
+             // positionned yet)
+             let [p_x, p_y] = panel_box.get_position();
+             let [p_p_x, p_p_y] = panel_box.get_parent().get_position();
+-            let x = p_x + p_p_x - monitor.x + (width - panel.width) / 2;
+-            let y = p_y + p_p_y - monitor.y + (height - panel.height) / 2;
+-
+-            background.set_clip(x, y, panel.width, panel.height);
+-            background.x = (width - panel.width) / 2 - x;
+-            background.y = .5 + (height - panel.height) / 2 - y;
++            let x = p_x + p_p_x - monitor.x;
++            let y = p_y + p_p_y - monitor.y;
++
++            // use panel_box dimensions for the clip to cover the full visible
++            // panel area (including when Dash to Panel sets a larger panel)
++            background.set_clip(x, y, width, height);
++            background.x = -x;
++            background.y = .5 - y;
+         } else {
+-            background.x = panel.x;
+-            background.y = panel.y;
+-            background.width = panel.width;
+-            background.height = panel.height;
++            // use panel_box dimensions so the blur covers the full visible
++            // panel area, not just the inner panel widget
++            background.x = 0;
++            background.y = 0;
++            background.width = width;
++            background.height = height;
+         }
+ 
+         // update the monitor panel is on
+-- 
+2.54.0
+

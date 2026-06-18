@@ -14,6 +14,9 @@ component_type=""
 component_vendor_path=""
 component_patches_path=""
 component_install_dir=""
+component_build_command=""
+component_build_output=""
+component_post_install_command=""
 vendor_abs=""
 patches_abs=""
 state_file=""
@@ -26,6 +29,9 @@ declare -Ag component_type_by_id=()
 declare -Ag component_vendor_path_by_id=()
 declare -Ag component_patches_path_by_id=()
 declare -Ag component_install_dir_by_id=()
+declare -Ag component_build_command_by_id=()
+declare -Ag component_build_output_by_id=()
+declare -Ag component_post_install_command_by_id=()
 declare -Ag component_id_by_vendor_path=()
 
 trim() {
@@ -76,6 +82,9 @@ register_component() {
   local component_vendor_path="$3"
   local component_patches_path="$4"
   local component_install_dir="$5"
+  local component_build_command="$6"
+  local component_build_output="$7"
+  local component_post_install_command="$8"
 
   [[ -n "$component_id" ]] || return 0
 
@@ -97,6 +106,9 @@ register_component() {
   component_vendor_path_by_id["$component_id"]="$component_vendor_path"
   component_patches_path_by_id["$component_id"]="$component_patches_path"
   component_install_dir_by_id["$component_id"]="$component_install_dir"
+  component_build_command_by_id["$component_id"]="$component_build_command"
+  component_build_output_by_id["$component_id"]="$component_build_output"
+  component_post_install_command_by_id["$component_id"]="$component_post_install_command"
   component_id_by_vendor_path["$component_vendor_path"]="$component_id"
 }
 
@@ -107,6 +119,9 @@ load_component_manifest() {
   local current_vendor_path=""
   local current_patches_path=""
   local current_install_dir=""
+  local current_build_command=""
+  local current_build_output=""
+  local current_post_install_command=""
 
   if [[ "$component_manifest_loaded" -eq 1 ]]; then
     return 0
@@ -122,16 +137,22 @@ load_component_manifest() {
   component_vendor_path_by_id=()
   component_patches_path_by_id=()
   component_install_dir_by_id=()
+  component_build_command_by_id=()
+  component_build_output_by_id=()
+  component_post_install_command_by_id=()
   component_id_by_vendor_path=()
 
   while IFS= read -r line || [[ -n "$line" ]]; do
     if [[ "$line" =~ ^[[:space:]]*-[[:space:]]id:[[:space:]]*(.+)$ ]]; then
-      register_component "$current_id" "$current_type" "$current_vendor_path" "$current_patches_path" "$current_install_dir" || return 1
+      register_component "$current_id" "$current_type" "$current_vendor_path" "$current_patches_path" "$current_install_dir" "$current_build_command" "$current_build_output" "$current_post_install_command" || return 1
       current_id="$(trim "${BASH_REMATCH[1]}")"
       current_type=""
       current_vendor_path=""
       current_patches_path=""
       current_install_dir=""
+      current_build_command=""
+      current_build_output=""
+      current_post_install_command=""
     elif [[ "$line" =~ ^[[:space:]]*type:[[:space:]]*(.+)$ ]]; then
       current_type="$(trim "${BASH_REMATCH[1]}")"
     elif [[ "$line" =~ ^[[:space:]]*vendor_path:[[:space:]]*(.+)$ ]]; then
@@ -140,10 +161,16 @@ load_component_manifest() {
       current_patches_path="$(trim "${BASH_REMATCH[1]}")"
     elif [[ "$line" =~ ^[[:space:]]*install_dir:[[:space:]]*(.+)$ ]]; then
       current_install_dir="$(trim "${BASH_REMATCH[1]}")"
+    elif [[ "$line" =~ ^[[:space:]]*build_command:[[:space:]]*(.+)$ ]]; then
+      current_build_command="$(trim "${BASH_REMATCH[1]}")"
+    elif [[ "$line" =~ ^[[:space:]]*build_output:[[:space:]]*(.+)$ ]]; then
+      current_build_output="$(trim "${BASH_REMATCH[1]}")"
+    elif [[ "$line" =~ ^[[:space:]]*post_install_command:[[:space:]]*(.+)$ ]]; then
+      current_post_install_command="$(trim "${BASH_REMATCH[1]}")"
     fi
   done < "$manifest_path"
 
-  register_component "$current_id" "$current_type" "$current_vendor_path" "$current_patches_path" "$current_install_dir" || return 1
+  register_component "$current_id" "$current_type" "$current_vendor_path" "$current_patches_path" "$current_install_dir" "$current_build_command" "$current_build_output" "$current_post_install_command" || return 1
   component_manifest_loaded=1
 }
 
@@ -159,6 +186,9 @@ set_component_context() {
   component_vendor_path="${component_vendor_path_by_id[$requested_component_id]}"
   component_patches_path="${component_patches_path_by_id[$requested_component_id]}"
   component_install_dir="${component_install_dir_by_id[$requested_component_id]}"
+  component_build_command="${component_build_command_by_id[$requested_component_id]:-}"
+  component_build_output="${component_build_output_by_id[$requested_component_id]:-}"
+  component_post_install_command="${component_post_install_command_by_id[$requested_component_id]:-}"
   vendor_abs="$repo_root/$component_vendor_path"
   patches_abs="$repo_root/$component_patches_path"
   state_file="$edit_state_dir/$requested_component_id.env"
@@ -345,6 +375,73 @@ ensure_generated_tree() {
   printf '*\n!.gitignore\n' > "$generated_dir/.gitignore"
 }
 
+cleanup_component_worktree() {
+  local component_work_dir="$1"
+
+  git -C "$vendor_abs" worktree remove --force "$component_work_dir" >/dev/null 2>&1 || true
+}
+
+run_component_shell_command() {
+  local command_kind="$1"
+  local shell_command="$2"
+  local component_work_dir="$3"
+  local destination_dir="$4"
+
+  if ! (
+    export COMPONENT_WORK_DIR="$component_work_dir"
+    export COMPONENT_DEST="$destination_dir"
+    cd "$component_work_dir"
+    bash -euo pipefail -c "$shell_command"
+  ) >/dev/null; then
+    fail "Failed to run $command_kind for $component_id"
+    return 1
+  fi
+}
+
+install_component_build_output() {
+  local component_work_dir="$1"
+  local destination_dir="$2"
+  local output_path="$component_work_dir/$component_build_output"
+
+  if [[ -z "$component_build_output" ]]; then
+    fail "Component $component_id defines a build command but no build output"
+    return 1
+  fi
+
+  if [[ -d "$output_path" ]]; then
+    tar -C "$output_path" -cf - . | tar -xf - -C "$destination_dir"
+    return 0
+  fi
+
+  if [[ ! -f "$output_path" ]]; then
+    fail "Build output not found for $component_id: $component_build_output"
+    return 1
+  fi
+
+  case "$output_path" in
+    *.zip)
+      unzip -oq "$output_path" -d "$destination_dir"
+      ;;
+    *.tar)
+      tar -xf "$output_path" -C "$destination_dir"
+      ;;
+    *.tar.gz|*.tgz)
+      tar -xzf "$output_path" -C "$destination_dir"
+      ;;
+    *)
+      fail "Unsupported build output for $component_id: $component_build_output"
+      return 1
+      ;;
+  esac
+}
+
+install_component_source_tree() {
+  local component_work_dir="$1"
+  local destination_dir="$2"
+
+  git -C "$component_work_dir" archive --format=tar HEAD | tar -xf - -C "$destination_dir"
+}
+
 render_component_to_generated() {
   local component_work_dir=""
   local destination_dir=""
@@ -364,18 +461,37 @@ render_component_to_generated() {
 
   rm -rf "$component_work_dir" "$destination_dir"
   mkdir -p "$component_work_dir" "$destination_dir"
-  git -C "$vendor_abs" worktree remove --force "$component_work_dir" >/dev/null 2>&1 || true
+  cleanup_component_worktree "$component_work_dir"
   git -C "$vendor_abs" worktree add --force --detach "$component_work_dir" HEAD >/dev/null
 
   if ! apply_patches_to_repo "$component_work_dir" "$patches_abs" "$component_id"; then
-    git -C "$vendor_abs" worktree remove --force "$component_work_dir" >/dev/null 2>&1 || true
+    cleanup_component_worktree "$component_work_dir"
     return 1
   fi
 
-  if ! git -C "$component_work_dir" archive --format=tar HEAD | tar -xf - -C "$destination_dir"; then
-    git -C "$vendor_abs" worktree remove --force "$component_work_dir" >/dev/null 2>&1 || true
+  if [[ -n "$component_build_command" ]]; then
+    if ! run_component_shell_command "build command" "$component_build_command" "$component_work_dir" "$destination_dir"; then
+      cleanup_component_worktree "$component_work_dir"
+      return 1
+    fi
+  fi
+
+  if [[ -n "$component_build_output" ]]; then
+    if ! install_component_build_output "$component_work_dir" "$destination_dir"; then
+      cleanup_component_worktree "$component_work_dir"
+      return 1
+    fi
+  elif ! install_component_source_tree "$component_work_dir" "$destination_dir"; then
+    cleanup_component_worktree "$component_work_dir"
     return 1
   fi
 
-  git -C "$vendor_abs" worktree remove --force "$component_work_dir" >/dev/null
+  if [[ -n "$component_post_install_command" ]]; then
+    if ! run_component_shell_command "post-install command" "$component_post_install_command" "$component_work_dir" "$destination_dir"; then
+      cleanup_component_worktree "$component_work_dir"
+      return 1
+    fi
+  fi
+
+  cleanup_component_worktree "$component_work_dir"
 }

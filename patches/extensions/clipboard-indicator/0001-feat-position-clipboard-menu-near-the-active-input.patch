@@ -1,0 +1,98 @@
+From 390020cb2990716a05b4f9d6a889f961e063ceba Mon Sep 17 00:00:00 2001
+From: TiamoP23 <43099774+TiamoP23@users.noreply.github.com>
+Date: Thu, 7 May 2026 15:30:32 +0200
+Subject: [PATCH] feat: position clipboard menu near the active input
+
+---
+ extension.js | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 62 insertions(+)
+
+diff --git a/extension.js b/extension.js
+index 121e944..a55ac58 100644
+--- a/extension.js
++++ b/extension.js
+@@ -102,6 +102,12 @@ const ClipboardIndicator = GObject.registerClass({
+         this._cursorActor.destroy();
+         this._cursorActor = null;
+ 
++        if (this._menuPositionActor) {
++            Main.uiGroup.remove_child(this._menuPositionActor);
++            this._menuPositionActor.destroy();
++            this._menuPositionActor = null;
++        }
++
+         super.destroy();
+     }
+ 
+@@ -1592,12 +1598,68 @@ const ClipboardIndicator = GObject.registerClass({
+             const [x, y] = global.get_pointer();
+             this._cursorActor.set_position(x, y);
+             this.menu.sourceActor = this._cursorActor;
++        } else if (!this.menu.isOpen) {
++            const [x, y] = this._getMenuSourcePosition();
++            if (!this._menuPositionActor) {
++                this._menuPositionActor = new Clutter.Actor({
++                    opacity: 0,
++                    width: 1,
++                    height: 1,
++                    reactive: false,
++                });
++                Main.uiGroup.add_child(this._menuPositionActor);
++            }
++            this._menuPositionActor.set_position(x, y);
++            this.menu.sourceActor = this._menuPositionActor;
++            // _arrowAlignment is an internal PopupMenu property (no public
++            // setter) that controls where the BoxPointer arrow appears along
++            // the source actor.  0.5 keeps it centred over our 1×1 anchor.
++            this.menu._arrowAlignment = 0.5;
+         }
+         this.menu.toggle();
+     }
+ 
++    _getMenuSourcePosition () {
++        // Check whether a GNOME Shell text entry currently has keyboard focus
++        // (e.g. the GNOME overview search bar, or any in-shell text field).
++        const shellFocus = global.stage.get_key_focus();
++        if (shellFocus) {
++            // get_key_focus() typically returns the inner ClutterText of an
++            // St.Entry.  Walk up one level to get the containing widget so the
++            // position reflects the visible input box.
++            const focusWidget = shellFocus.get_parent() instanceof St.Entry
++                ? shellFocus.get_parent()
++                : shellFocus;
++            try {
++                const extents = focusWidget.get_transformed_extents();
++                const monitor = Main.layoutManager.findMonitorForActor(focusWidget);
++                if (monitor) {
++                    // Anchor just below the input field.
++                    const x = extents.origin.x;
++                    const y = extents.origin.y + extents.size.height;
++                    if (x >= monitor.x && x < monitor.x + monitor.width &&
++                        y >= monitor.y && y < monitor.y + monitor.height) {
++                        return [x, y];
++                    }
++                }
++            } catch (_e) {
++                // Fall through to next strategy.
++            }
++        }
+ 
++        // If an application window has focus, the user is likely typing there.
++        // Use the cursor position as the best available proxy for the focused
++        // input widget inside that window.
++        // global.get_pointer() returns [x, y, modifierState] – only the
++        // coordinates are needed here.
++        if (global.display.focus_window) {
++            return global.get_pointer().slice(0, 2);
++        }
+ 
++        // Fall back: bottom-right corner of the primary monitor.
++        const monitor = Main.layoutManager.primaryMonitor;
++        return [monitor.x + monitor.width, monitor.y + monitor.height];
++    }
+ 
+     #pasteItem (menuItem) {
+         this.menu.close();
+-- 
+2.54.0
+

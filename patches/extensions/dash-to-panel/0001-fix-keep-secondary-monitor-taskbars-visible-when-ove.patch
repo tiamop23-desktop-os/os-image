@@ -1,0 +1,29 @@
+From f832b0483f528a9a39c5aabacd8089e219b3063a Mon Sep 17 00:00:00 2001
+From: "copilot-swe-agent[bot]" <198982749+Copilot@users.noreply.github.com>
+Date: Sun, 5 Apr 2026 21:32:56 +0000
+Subject: [PATCH 1/2] fix: keep secondary monitor taskbars visible when
+ overview opens
+
+Agent-Logs-Url: https://github.com/TiamoP23/dash-to-panel/sessions/037772d8-eac5-4031-8ba4-d24259fc62a7
+
+Co-authored-by: TiamoP23 <43099774+TiamoP23@users.noreply.github.com>
+---
+ src/panel.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/panel.js b/src/panel.js
+index 40aed24..560782a 100644
+--- a/src/panel.js
++++ b/src/panel.js
+@@ -734,7 +734,7 @@ export const Panel = GObject.registerClass(
+       )
+       let isOverview = !!Main.overview.visibleTarget
+       let isOverviewFocusedMonitor = isOverview && isFocusedMonitor
+-      let isShown = !isOverview || isOverviewFocusedMonitor
++      let isShown = !isOverview || isOverviewFocusedMonitor || !this.isPrimary
+       let actorData = Utils.getTrackedActorData(this.panelBox)
+ 
+       // prevent the "chrome" to update the panelbox visibility while in overview
+-- 
+2.54.0
+

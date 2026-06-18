@@ -1,0 +1,69 @@
+From 74d3abcdc5b63762f0fd8894f7f80169a0a1554f Mon Sep 17 00:00:00 2001
+From: TiamoP23 <43099774+TiamoP23@users.noreply.github.com>
+Date: Sat, 9 May 2026 23:47:04 +0200
+Subject: [PATCH 2/2] fix: refresh dash-to-panel blur layout after startup
+
+---
+ src/components/panel.js | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/src/components/panel.js b/src/components/panel.js
+index ccf15e0..e3e56dc 100644
+--- a/src/components/panel.js
++++ b/src/components/panel.js
+@@ -27,6 +27,7 @@ export const PanelBlur = class PanelBlur {
+         this.settings = settings;
+         this.effects_manager = effects_manager;
+         this.actors_list = [];
++        this._layoutRefreshSourceId = 0;
+         this.enabled = false;
+     }
+ 
+@@ -88,6 +89,8 @@ export const PanelBlur = class PanelBlur {
+                         this.maybe_blur_panel(child.get_child_at_index(0));
+                     }
+                 });
++
++                this.queue_layout_refresh();
+             }
+         })
+ 
+@@ -151,10 +154,23 @@ export const PanelBlur = class PanelBlur {
+                     this.maybe_blur_panel(p.panel);
+             });
+ 
++            this.queue_layout_refresh();
++
+             return GLib.SOURCE_REMOVE;
+         });
+     };
+ 
++    queue_layout_refresh() {
++        if (this._layoutRefreshSourceId)
++            return;
++
++        this._layoutRefreshSourceId = GLib.idle_add(GLib.PRIORITY_LOW, () => {
++            this._layoutRefreshSourceId = 0;
++            this.actors_list.forEach(actors => this.update_size(actors));
++            return GLib.SOURCE_REMOVE;
++        });
++    }
++
+     /// Blur a panel only if it is not already blurred (contained in the list)
+     maybe_blur_panel(panel) {
+         // check if the panel is contained in the list
+@@ -604,6 +620,11 @@ export const PanelBlur = class PanelBlur {
+         immutable_actors_list.forEach(actors => this.destroy_blur(actors, false));
+         this.actors_list = [];
+ 
++        if (this._layoutRefreshSourceId) {
++            GLib.source_remove(this._layoutRefreshSourceId);
++            this._layoutRefreshSourceId = 0;
++        }
++
+         this._dirty = true;
+ 
+         this.connections.disconnect_all();
+-- 
+2.54.0
+
